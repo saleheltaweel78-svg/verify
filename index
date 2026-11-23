@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report verification — Public Health Laboratory</title>
+<style>
+ body{margin:0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:#f3f1ec;color:#1d2b30}
+ .wrap{max-width:620px;margin:0 auto;padding:18px}
+ .head{text-align:center;margin-bottom:14px}
+ .head b{display:block;font-size:17px}.head span{display:block;font-size:13px;color:#5b6b70}
+ .card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:12px}
+ .st{border-radius:14px;padding:16px;text-align:center;font-size:20px;font-weight:700}
+ .ok{background:#dff3e7;color:#146c3a}.bad{background:#fbdcd8;color:#a32116}.wait{background:#eee;color:#555}
+ .st small{display:block;font-size:13px;font-weight:400;margin-top:4px}
+ table{width:100%;border-collapse:collapse;font-size:16px;table-layout:fixed}
+ td{padding:10px 4px;border-bottom:1px solid #eee;vertical-align:top;overflow-wrap:anywhere}
+ tr:last-child td{border-bottom:0}
+ td{text-align:left}
+ td:first-child{color:#5b6b70;width:40%}
+ td:last-child{font-weight:600}
+ .ltr{direction:ltr;text-align:left}
+ .oos{color:#a32116;font-weight:700}
+ .foot{font-size:12px;color:#6b787c;text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="head"><b>وزارة الصحة — دائرة مختبر الصحة العامة</b><b>قسم التحاليل الدوائية</b><span>Ministry of Health — Public Health Laboratory — Drug Analysis Department</span></div>
+ <div class="card"><div id="st" class="st wait">جارٍ التحقق…<small>Verifying…</small></div></div>
+ <div class="card" id="data" style="display:none"><table id="tbl" dir="ltr"></table></div>
+ <div class="foot">
+  يُتحقَّق من التوقيع الرقمي داخل هاتفك، ولا تُرسل أي بيانات. قارن البيانات أعلاه بالتقرير المطبوع: أي اختلاف يعني أن الورقة معدّلة.<br>
+  <span dir="ltr">The digital signature is checked on your phone; nothing is sent anywhere. Compare the data above with the printed report.</span><br>
+  للاستفسار: <span class="ltr">00970598814415</span> · Key 54015A7B
+ </div>
+</div>
+<script>
+const JWK = {"kty": "EC", "crv": "P-256", "x": "uSTRwQ3LhaoGAugU7u5H1edBTNJvz7fWz4dQTfJfZVQ", "y": "syyI0uNsnmRZUx9a3qVy9e10oPFN8omrolzCDbXQE5A", "ext": true};
+
+const $ = id => document.getElementById(id);
+function b64(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const b=atob(s);return Uint8Array.from(b,c=>c.charCodeAt(0));}
+function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function state(cls,ar,en){const e=$('st');e.className='st '+cls;e.innerHTML=esc(ar)+'<small>'+esc(en)+'</small>';}
+(async()=>{
+  const frag=decodeURIComponent((location.hash||'').slice(1));
+  const i=frag.lastIndexOf('.');
+  if(i<1){state('wait','امسح رمز QR الموجود على التقرير','Scan the QR code printed on the report');return;}
+  let body,sig,d;
+  try{body=b64(frag.slice(0,i));sig=b64(frag.slice(i+1));d=JSON.parse(new TextDecoder().decode(body));}
+  catch(e){state('bad','الرمز تالف أو غير صادر عن المختبر','Invalid code — not issued by the laboratory');return;}
+  if(!(window.crypto&&crypto.subtle)){state('wait','افتح الرابط في متصفح حديث (Chrome / Safari)','Open in an up-to-date browser');return;}
+  let ok=false;
+  try{const key=await crypto.subtle.importKey('jwk',JWK,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+      ok=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,sig,body);}catch(e){ok=false;}
+  if(!ok){state('bad','✖ غير صحيح — التوقيع لا يطابق','✖ NOT AUTHENTIC — signature does not match');return;}
+  state('ok','✔ تقرير أصلي صادر عن المختبر','✔ Authentic report issued by the laboratory');
+  const rows=[['Sample Code',d.c],['Product Name',d.p],['Lot No.',d.l]];
+  const h=rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1]||'—')}</td></tr>`).join('');
+  $('tbl').innerHTML=h; $('data').style.display='';
+})();
+window.addEventListener('hashchange',()=>location.reload());
+
+</script>
+</body>
+</html>
